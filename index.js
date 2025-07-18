@@ -1,34 +1,28 @@
-const express = require("express");
-const axios = require("axios");
-const cors = require("cors");
+const express = require('express');
+const puppeteer = require('puppeteer');
+const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
 app.use(cors());
 
-app.get("/download", async (req, res) => {
-  const videoUrl = req.query.url;
-  if (!videoUrl) return res.status(400).json({ error: "URL required" });
+app.get('/download', async (req, res) => {
+  const { url } = req.query;
+
+  if (!url) return res.status(400).json({ error: 'URL required' });
 
   try {
-    const options = {
-      method: 'GET',
-      url: 'https://pinterest-video-and-image-downloader.p.rapidapi.com/api/',
-      params: { url: videoUrl },
-      headers: {
-        'X-RapidAPI-Key': 'f64b91815amsh6462c3ff2f08087p14dae3jsn6ac189d738b6',
-        'X-RapidAPI-Host': 'pinterest-video-and-image-downloader.p.rapidapi.com'
-      }
-    };
+    const browser = await puppeteer.launch({ headless: "new" });
+    const page = await browser.newPage();
+    await page.goto(url);
 
-    const response = await axios.request(options);
-    res.json(response.data);
+    const image = await page.$eval("meta[property='og:image']", el => el.content);
+    await browser.close();
+
+    res.json({ download_url: image });
   } catch (err) {
-    res.status(500).json({ error: "Download failed", details: err.message });
+    res.status(500).json({ error: "Failed to extract image", details: err.message });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`API running on port ${PORT}`));
