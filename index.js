@@ -1,9 +1,14 @@
+// index.js
 const express = require('express');
 const puppeteer = require('puppeteer');
 const cors = require('cors');
-
 const app = express();
+
 app.use(cors());
+
+app.get('/', (req, res) => {
+  res.send('Pinterest Downloader API is Live!');
+});
 
 app.get('/download', async (req, res) => {
   const { url } = req.query;
@@ -11,9 +16,13 @@ app.get('/download', async (req, res) => {
   if (!url) return res.status(400).json({ error: 'URL required' });
 
   try {
-    const browser = await puppeteer.launch({ headless: "new" });
+    const browser = await puppeteer.launch({
+      headless: "new",
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
     const page = await browser.newPage();
-    await page.goto(url);
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
 
     const image = await page.$eval("meta[property='og:image']", el => el.content);
     await browser.close();
